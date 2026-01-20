@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24点速算挑战</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/polyfills.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .header {
+                padding: 15px 10px;
+            }
+            h1 {
+                font-size: 1.5em;
+                margin-bottom: 15px;
+            }
+            .controls {
+                gap: 8px;
+            }
+            .options {
+                gap: 8px;
+                margin-top: 10px;
+            }
+            .option-group {
+                flex-direction: column;
+                gap: 5px;
+                width: 100%;
+            }
+            .option-group label {
+                font-size: 13px;
+            }
+            select {
+                width: 100%;
+                padding: 10px;
+                font-size: 14px;
+            }
+            button {
+                padding: 12px 15px;
+                font-size: 14px;
+                flex: 1;
+                min-width: 0;
+            }
+            .questions-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 10px;
+            }
+            .question-card {
+                padding: 12px;
+            }
+            .question-numbers {
+                font-size: 22px;
+                letter-spacing: 2px;
+            }
+            .number-pad {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 8px;
+            }
+            .number-pad button {
+                padding: 15px 10px;
+                font-size: 16px;
+            }
+            .solver-content {
+                padding: 20px;
+                width: 95%;
+            }
+            .solver-content h2 {
+                font-size: 1.2em;
+            }
+            .selected-number {
+                padding: 8px 15px;
+                font-size: 20px;
+            }
+            .solver-controls button {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .options {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .option-group label {
+            font-size: 14px;
+            color: #333;
+        }
+        select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 2px solid #e2e8f0;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #ed8936;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #dd6b20;
+            transform: translateY(-2px);
+        }
+        .solver-section {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .solver-section.show {
+            display: flex;
+        }
+        .solver-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+        .solver-content h2 {
+            color: #333;
+            margin: 0 0 20px 0;
+            font-size: 1.5em;
+        }
+        .close-btn {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            color: #999;
+            cursor: pointer;
+            line-height: 20px;
+        }
+        .close-btn:hover {
+            color: #333;
+        }
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .number-pad button {
+            padding: 20px;
+            font-size: 20px;
+            background: #e8eaf6;
+            color: #5568d3;
+            border: 2px solid #c5cae9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        .number-pad button:hover {
+            background: #c5cae9;
+            border-color: #9fa8da;
+            transform: scale(1.05);
+        }
+        .number-pad button:disabled {
+            background: #f5f5f5;
+            color: #bdbdbd;
+            border-color: #e0e0e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .selected-numbers {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            min-height: 60px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+        .selected-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 26px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+        .solver-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .solver-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            min-height: 50px;
+        }
+        .solver-result h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .solver-result .answer-item {
+            margin: 5px 0;
+            color: #666;
+        }
+        .questions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .question-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .question-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        .question-number {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .question-numbers {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+            letter-spacing: 3px;
+            word-wrap: break-word;
+        }
+        .answer-toggle {
+            background: #e2e8f0;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .answer-toggle:hover {
+            background: #cbd5e0;
+        }
+        .answers {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 13px;
+            color: #666;
+        }
+        .answers.show {
+            display: block;
+        }
+        .answer-item {
+            margin: 5px 0;
+        }
+        @media print {
+            body {
+                background: white;
+            }
+            .header, .controls {
+                display: none;
+            }
+        }
+        .questions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .question-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .question-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        .question-number {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .question-numbers {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+            letter-spacing: 3px;
+            word-wrap: break-word;
+        }
+        .answer-toggle {
+            background: #e2e8f0;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .answer-toggle:hover {
+            background: #cbd5e0;
+        }
+        .answers {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 13px;
+            color: #666;
+        }
+        .answers.show {
+            display: block;
+        }
+        .answer-item {
+            margin: 5px 0;
+        }
+        @media print {
+            body {
+                background: white;
+            }
+            .header, .controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="solver-section" id="solverModal">
+        <div class="solver-content">
+            <span class="close-btn" onclick="closeSolver()">&times;</span>
+            <h2>24点求解器</h2>
+            <div class="selected-numbers" id="selectedNumbers"></div>
+            <div class="number-pad">
+                <button onclick="selectNumber(1)">1</button>
+                <button onclick="selectNumber(2)">2</button>
+                <button onclick="selectNumber(3)">3</button>
+                <button onclick="selectNumber(4)">4</button>
+                <button onclick="selectNumber(5)">5</button>
+                <button onclick="selectNumber(6)">6</button>
+                <button onclick="selectNumber(7)">7</button>
+                <button onclick="selectNumber(8)">8</button>
+                <button onclick="selectNumber(9)">9</button>
+                <button onclick="selectNumber(10)">10</button>
+            </div>
+            <div class="solver-controls">
+                <button class="btn-secondary" onclick="clearSelection()">清除</button>
+            </div>
+            <div class="solver-result" id="solverResult"></div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>24点速算挑战</h1>
+        <div class="controls">
+            <button class="btn-primary" onclick="generateQuestions()">换一批</button>
+            <button class="btn-success" onclick="exportPDF()">导出为PDF</button>
+            <button class="btn-secondary" onclick="toggleAllAnswers()">显示/隐藏全部答案</button>
+            <button class="btn-primary" onclick="openSolver()">24点求解器</button>
+        </div>
+        <div class="options">
+            <div class="option-group">
+                <label for="borderColor">边框颜色:</label>
+                <select id="borderColor" title="选择边框颜色" onchange="updateBorderColor()">
+                    <option value="pink">粉色</option>
+                    <option value="blue">蓝色</option>
+                    <option value="green">绿色</option>
+                    <option value="orange">橙色</option>
+                    <option value="purple">紫色</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="pdfContent">PDF内容:</label>
+                <select id="pdfContent" title="选择PDF导出内容">
+                    <option value="both">题目和答案</option>
+                    <option value="questions">仅题目</option>
+                    <option value="answers">仅答案</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="questions-grid" id="questionsGrid"></div>
+
+    <script>
+        let questions = [];
+        let allAnswersVisible = false;
+        let selectedNums = [];
+        let currentBorderColor = 'pink';
+
+        const borderColors = {
+            pink: [255, 182, 193],
+            blue: [102, 126, 234],
+            green: [72, 187, 120],
+            orange: [237, 137, 54],
+            purple: [139, 92, 246]
+        };
+
+        function selectNumber(num) {
+            if (selectedNums.length < 4) {
+                selectedNums.push(num);
+                updateSelectedDisplay();
+                if (selectedNums.length === 4) {
+                    solveCustom();
+                }
+            }
+        }
+
+        function clearSelection() {
+            selectedNums = [];
+            updateSelectedDisplay();
+            document.getElementById('solverResult').innerHTML = '';
+        }
+
+        function openSolver() {
+            document.getElementById('solverModal').classList.add('show');
+            clearSelection();
+        }
+
+        function closeSolver() {
+            document.getElementById('solverModal').classList.remove('show');
+            clearSelection();
+        }
+
+        function updateSelectedDisplay() {
+            const display = document.getElementById('selectedNumbers');
+            display.innerHTML = selectedNums.map(n => `<div class="selected-number">${n}</div>`).join('');
+        }
+
+        function solveCustom() {
+            if (selectedNums.length !== 4) {
+                document.getElementById('solverResult').innerHTML = '<h3>请选择4个数字</h3>';
+                return;
+            }
+            const solutions = solve24(selectedNums);
+            const resultDiv = document.getElementById('solverResult');
+            if (solutions.length > 0) {
+                resultDiv.innerHTML = '<h3>找到以下解法:</h3>' +
+                    solutions.map((s, i) => `<div class="answer-item">解法${i + 1}: ${s} = 24</div>`).join('');
+            } else {
+                resultDiv.innerHTML = '<h3>无解</h3>';
+            }
+        }
+
+        function updateBorderColor() {
+            currentBorderColor = document.getElementById('borderColor').value;
+            renderQuestions();
+        }
+
+        function solve24(nums) {
+            const solutions = [];
+            const ops = ['+', '-', '*', '/'];
+
+            function calc(a, b, op) {
+                if (op === '+') return a + b;
+                if (op === '-') return a - b;
+                if (op === '*') return a * b;
+                if (op === '/') return b !== 0 ? a / b : null;
+            }
+
+            function evaluate(expr) {
+                try {
+                    return Function('"use strict"; return (' + expr + ')')();
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function normalize(expr) {
+                expr = expr.replace(/\s/g, '');
+
+                // 计算表达式的值作为签名的一部分
+                const value = evaluate(expr);
+                if (value === null) return expr;
+
+                // 提取所有数字并排序
+                const nums = expr.match(/\d+/g);
+                if (!nums) return expr;
+                const numsSorted = nums.map(Number).sort((a, b) => a - b).join(',');
+
+                // 提取所有运算符并排序
+                const ops = expr.match(/[+\-*/]/g);
+                if (!ops) return expr;
+                const opsSorted = ops.slice().sort().join('');
+
+                // 返回组合签名
+                return `${numsSorted}|${opsSorted}|${value}`;
+            }
+
+            function dfs(arr, exprs) {
+                if (arr.length === 1) {
+                    if (Math.abs(arr[0] - 24) < 0.001) {
+                        const result = evaluate(exprs[0]);
+                        if (result !== null && Math.abs(result - 24) < 0.001) {
+                            solutions.push(exprs[0]);
+                        }
+                    }
+                    return;
+                }
+
+                for (let i = 0; i < arr.length; i++) {
+                    for (let j = 0; j < arr.length; j++) {
+                        if (i === j) continue;
+                        const newArr = [];
+                        const newExprs = [];
+                        for (let k = 0; k < arr.length; k++) {
+                            if (k !== i && k !== j) {
+                                newArr.push(arr[k]);
+                                newExprs.push(exprs[k]);
+                            }
+                        }
+
+                        for (let op of ops) {
+                            const val = calc(arr[i], arr[j], op);
+                            if (val === null || val < 0 || !Number.isFinite(val)) continue;
+                            if (!Number.isInteger(val)) continue;
+
+                            if ((op === '+' || op === '*') && i > j) continue;
+
+                            const needParens1 = (op === '*' || op === '/') && (exprs[i].includes('+') || exprs[i].includes('-'));
+                            const needParens2 = (op === '*' || op === '/') && (exprs[j].includes('+') || exprs[j].includes('-'));
+                            const expr1 = needParens1 ? `(${exprs[i]})` : exprs[i];
+                            const expr2 = needParens2 ? `(${exprs[j]})` : exprs[j];
+
+                            newArr.push(val);
+                            newExprs.push(`${expr1} ${op} ${expr2}`);
+                            dfs(newArr, newExprs);
+                            newArr.pop();
+                            newExprs.pop();
+                        }
+                    }
+                }
+            }
+
+            dfs(nums, nums.map(String));
+
+            const uniqueSolutions = [];
+            const seen = new Set();
+            for (let sol of solutions) {
+                const norm = normalize(sol);
+                if (!seen.has(norm)) {
+                    seen.add(norm);
+                    uniqueSolutions.push(sol);
+                    if (uniqueSolutions.length >= 5) break;
+                }
+            }
+            return uniqueSolutions;
+        }
+
+        function generateValidQuestion() {
+            let attempts = 0;
+            while (attempts < 100) {
+                const nums = Array.from({length: 4}, () => Math.floor(Math.random() * 10) + 1);
+                const solutions = solve24(nums);
+                if (solutions.length > 0) {
+                    return { nums, solutions };
+                }
+                attempts++;
+            }
+            return null;
+        }
+
+        function generateQuestions() {
+            questions = [];
+            const seen = new Set();
+            while (questions.length < 50) {
+                const q = generateValidQuestion();
+                if (q) {
+                    const key = q.nums.slice().sort().join(',');
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        questions.push(q);
+                    }
+                }
+            }
+            renderQuestions();
+        }
+
+        function renderQuestions() {
+            const grid = document.getElementById('questionsGrid');
+            const color = borderColors[currentBorderColor];
+            const colorStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+            grid.innerHTML = questions.map((q, i) => `
+                <div class="question-card" style="border: 3px solid ${colorStyle};">
+                    <div class="question-number" style="color: ${colorStyle};">题目 ${i + 1}</div>
+                    <div class="question-numbers">${q.nums.join(' ')}</div>
+                    <button class="answer-toggle" onclick="toggleAnswer(${i})">显示答案</button>
+                    <div class="answers" id="answer-${i}">
+                        ${q.solutions.length > 0 ? q.solutions.map((s, j) => `<div class="answer-item">${q.solutions.length > 1 ? `答案${j + 1}: ` : '答案: '}${s} = 24</div>`).join('') : '<div class="answer-item">答案: 无解</div>'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleAnswer(index) {
+            const el = document.getElementById(`answer-${index}`);
+            el.classList.toggle('show');
+        }
+
+        function toggleAllAnswers() {
+            allAnswersVisible = !allAnswersVisible;
+            questions.forEach((_, i) => {
+                const el = document.getElementById(`answer-${i}`);
+                if (allAnswersVisible) {
+                    el.classList.add('show');
+                } else {
+                    el.classList.remove('show');
+                }
+            });
+        }
+
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString('zh-CN');
+            const pdfContent = document.getElementById('pdfContent').value;
+            const color = borderColors[currentBorderColor];
+
+            if (pdfContent === 'questions' || pdfContent === 'both') {
+                const canvas1 = document.createElement('canvas');
+                canvas1.width = 600;
+                canvas1.height = 80;
+                const ctx1 = canvas1.getContext('2d');
+                ctx1.fillStyle = '#333';
+                ctx1.font = 'bold 36px Microsoft YaHei, Arial';
+                ctx1.textAlign = 'center';
+                ctx1.fillText('24点速算挑战 - 练习题', 300, 50);
+                doc.addImage(canvas1.toDataURL(), 'PNG', 40, 10, 130, 15);
+
+                doc.setTextColor(100, 100, 100);
+                doc.setFontSize(8);
+                doc.text(date, 105, 30, { align: 'center' });
+
+                for (let i = 0; i < 50; i++) {
+                    const col = i % 5;
+                    const row = Math.floor(i / 5);
+                    const x = 15 + col * 38;
+                    const y = 40 + row * 24;
+
+                    doc.setDrawColor(color[0], color[1], color[2]);
+                    doc.setLineWidth(0.3);
+                    doc.roundedRect(x - 2, y - 7, 36, 18, 2, 2, 'S');
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8);
+                    doc.setTextColor(color[0], color[1], color[2]);
+                    doc.text(`${i + 1}`, x, y);
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(15);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(questions[i].nums.join('  '), x + 18, y + 5, { align: 'center' });
+                }
+            }
+
+            if (pdfContent === 'answers' || pdfContent === 'both') {
+                if (pdfContent === 'both') doc.addPage();
+
+                const canvas2 = document.createElement('canvas');
+                canvas2.width = 600;
+                canvas2.height = 80;
+                const ctx2 = canvas2.getContext('2d');
+                ctx2.fillStyle = '#333';
+                ctx2.font = 'bold 36px Microsoft YaHei, Arial';
+                ctx2.textAlign = 'center';
+                ctx2.fillText('24点速算挑战 - 答案详解', 300, 50);
+                doc.addImage(canvas2.toDataURL(), 'PNG', 35, 10, 140, 15);
+
+                doc.setTextColor(0, 0, 0);
+
+                for (let i = 0; i < 50; i++) {
+                    const col = i % 5;
+                    const row = Math.floor(i / 5);
+                    const x = 10 + col * 39;
+                    const y = 32 + row * 26;
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(7);
+                    doc.text(`${i + 1}. (${questions[i].nums.join(',')})`, x, y);
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(6);
+                    const sols = questions[i].solutions.slice(0, 5);
+                    sols.forEach((sol, j) => {
+                        doc.text(`${sol}=24`, x, y + 2.5 + j * 2.5);
+                    });
+                }
+            }
+
+            doc.save('24点练习题.pdf');
+        }
+
+        generateQuestions();
+    </script>
+</body>
+</html>
